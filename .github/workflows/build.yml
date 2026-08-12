@@ -40,7 +40,10 @@ jobs:
     
     - name: Package APK
       run: |
+        set -ex
         mkdir -p bin/gen
+        
+        echo "=== Generating R.java ==="
         $ANDROID_HOME/build-tools/34.0.0/aapt package -f -m \
           -S android_build/res \
           -J bin/gen \
@@ -48,6 +51,19 @@ jobs:
           -I $ANDROID_HOME/platforms/android-34/android.jar \
           --auto-add-overlay
         
+        echo "=== Compiling R.java ==="
+        javac -source 1.8 -target 1.8 \
+          -classpath $ANDROID_HOME/platforms/android-34/android.jar \
+          -d bin/classes \
+          bin/gen/com/digitalmodedecoder/R.java
+        
+        echo "=== Converting R.class to DEX ==="
+        $ANDROID_HOME/build-tools/34.0.0/d8 \
+          --output bin \
+          --lib $ANDROID_HOME/platforms/android-34/android.jar \
+          bin/classes/com/digitalmodedecoder/R.class
+        
+        echo "=== Linking APK ==="
         $ANDROID_HOME/build-tools/34.0.0/aapt link -f \
           -o bin/dmd-unsigned.apk \
           -I $ANDROID_HOME/platforms/android-34/android.jar \
@@ -55,8 +71,10 @@ jobs:
           -M android_build/AndroidManifest.xml \
           --auto-add-overlay
         
+        echo "=== Adding DEX to APK ==="
         cd bin && zip -j dmd-unsigned.apk classes.dex && cd ..
         
+        echo "=== Aligning APK ==="
         $ANDROID_HOME/build-tools/34.0.0/zipalign -f 4 bin/dmd-unsigned.apk bin/dmd-aligned.apk
     
     - name: Sign APK
