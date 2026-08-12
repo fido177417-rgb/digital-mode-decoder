@@ -1,0 +1,15 @@
+# Digital Mode Decoder Requirements
+# All core functionality is pure Python - no external dependencies required
+
+# Optional: For microphone input (not required for file decoding)
+# pyaudio>=0.2.11
+
+# Optional: For advanced DSP (if available)
+# numpy>=1.20.0
+# scipy>=1.7.0
+
+# Optional: For FT8 decoding via external tools
+# wsjtx (install separately)
+
+# Android-specific
+# termux-api (install via: pkg install termux-api)
