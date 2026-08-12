@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Mode Decoder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #16213e, #0f3460);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #e94560;
+        }
+        .header h1 { font-size: 1.5em; color: #e94560; }
+        .header p { font-size: 0.9em; color: #aaa; margin-top: 5px; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            flex: 1;
+            min-width: 100px;
+            padding: 12px;
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            color: #aaa;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .tab:hover { border-color: #e94560; color: #fff; }
+        .tab.active { background: #e94560; color: #fff; border-color: #e94560; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .upload-area {
+            border: 2px dashed #0f3460;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #16213e;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover { border-color: #e94560; }
+        .upload-area.dragover { background: #1a1a3e; border-color: #e94560; }
+        .upload-area input { display: none; }
+        .upload-icon { font-size: 48px; margin-bottom: 15px; }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #e94560;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        .btn:hover { background: #c73e54; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        .settings {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .settings h3 { color: #e94560; margin-bottom: 10px; }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .form-group { flex: 1; min-width: 120px; }
+        .form-group label { display: block; color: #aaa; margin-bottom: 5px; font-size: 0.9em; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            background: #1a1a2e;
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            color: #eee;
+            font-size: 0.9em;
+        }
+        .result-box {
+            background: #0f3460;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 100px;
+        }
+        .result-box h3 { color: #e94560; margin-bottom: 10px; }
+        .result-text {
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+            display: none;
+        }
+        .status.loading { display: block; background: #0f3460; color: #aaa; }
+        .status.success { display: block; background: #1a3a1a; color: #4caf50; }
+        .status.error { display: block; background: #3a1a1a; color: #f44336; }
+        .spectrum-container {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .spectrum-canvas {
+            width: 100%;
+            height: 200px;
+            background: #0a0a1a;
+            border-radius: 6px;
+        }
+        .morse-table {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            margin-top: 15px;
+        }
+        .morse-item {
+            background: #16213e;
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.85em;
+        }
+        .morse-item .char { font-weight: bold; color: #e94560; }
+        .morse-item .code { font-family: monospace; color: #aaa; }
+        .info-box {
+            background: #16213e;
+            border-left: 3px solid #e94560;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Digital Mode Decoder</h1>
+        <p>CW / FT8 / RTTY Decoder</p>
+    </div>
+    
+    <div class="container">
+        <div class="tabs">
+            <div class="tab active" data-tab="cw">CW</div>
+            <div class="tab" data-tab="rtty">RTTY</div>
+            <div class="tab" data-tab="ft8">FT8</div>
+            <div class="tab" data-tab="reference">Reference</div>
+        </div>
+        
+        <div class="panel active" id="panel-cw">
+            <div class="info-box">Upload a WAV file containing CW (Morse code) audio to decode it.</div>
+            <div class="upload-area" id="cw-upload">
+                <div class="upload-icon">📁</div>
+                <p>Tap to select WAV file</p>
+                <input type="file" id="cw-file" accept=".wav,.raw,.pcm">
+            </div>
+            <div class="settings">
+                <h3>CW Settings</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tone Frequency (Hz)</label>
+                        <input type="number" id="cw-tone" value="700" min="300" max="1500">
+                    </div>
+                    <div class="form-group">
+                        <label>Sample Rate (Hz)</label>
+                        <input type="number" id="cw-rate" value="8000" min="4000" max="48000">
+                    </div>
+                </div>
+            </div>
+            <button class="btn" id="cw-decode" disabled>Decode CW</button>
+            <div class="status" id="cw-status"></div>
+            <div class="result-box" id="cw-result" style="display:none;">
+                <h3>Decoded Output</h3>
+                <div class="result-text" id="cw-output"></div>
+            </div>
+        </div>
+        
+        <div class="panel" id="panel-rtty">
+            <div class="info-box">Upload a WAV file containing RTTY (FSK) audio to decode it.</div>
+            <div class="upload-area" id="rtty-upload">
+                <div class="upload-icon">📁</div>
+                <p>Tap to select WAV file</p>
+                <input type="file" id="rtty-file" accept=".wav,.raw,.pcm">
+            </div>
+            <div class="settings">
+                <h3>RTTY Settings</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Shift (Hz)</label>
+                        <select id="rtty-shift">
+                            <option value="170" selected>170 Hz (standard)</option>
+                            <option value="425">425 Hz</option>
+                            <option value="850">850 Hz</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Baud Rate</label>
+                        <select id="rtty-baud">
+                            <option value="45.45" selected>45.45 (standard)</option>
+                            <option value="50">50</option>
+                            <option value="75">75</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button class="btn" id="rtty-decode" disabled>Decode RTTY</button>
+            <div class="status" id="rtty-status"></div>
+            <div class="result-box" id="rtty-result" style="display:none;">
+                <h3>Decoded Output</h3>
+                <div class="result-text" id="rtty-output"></div>
+            </div>
+        </div>
+        
+        <div class="panel" id="panel-ft8">
+            <div class="info-box">FT8 decoding requires external tools (WSJT-X). This panel provides frequency reference.</div>
+            <div class="settings">
+                <h3>FT8 Frequency Reference</h3>
+                <div class="morse-table" id="ft8-freqs"></div>
+            </div>
+        </div>
+        
+        <div class="panel" id="panel-reference">
+            <div class="info-box">Quick reference for Morse code and digital modes.</div>
+            <div class="settings">
+                <h3>Morse Code Table</h3>
+                <div class="morse-table" id="morse-table"></div>
+            </div>
+        </div>
+        
+        <div class="spectrum-container">
+            <h3>Spectrum Analyzer</h3>
+            <canvas class="spectrum-canvas" id="spectrum-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        const FT8_FREQS = {
+            '160m': '1.840', '80m': '3.573', '40m': '7.074',
+            '30m': '10.136', '20m': '14.074', '15m': '21.074',
+            '10m': '28.074', '6m': '50.313', '2m': '144.170'
+        };
+        
+        const MORSE = {
+            'A':'.-', 'B':'-...', 'C':'-.-.', 'D':'-..', 'E':'.',
+            'F':'..-.', 'G':'--.', 'H':'....', 'I':'..', 'J':'.---',
+            'K':'-.-', 'L':'.-..', 'M':'--', 'N':'-.', 'O':'---',
+            'P':'.--.', 'Q':'--.-', 'R':'.-.', 'S':'...', 'T':'-',
+            'U':'..-', 'V':'...-', 'W':'.--', 'X':'-..-', 'Y':'-.--',
+            'Z':'--..', '0':'-----', '1':'.----', '2':'..---',
+            '3':'...--', '4':'....-', '5':'.....', '6':'-....',
+            '7':'--...', '8':'---..', '9':'----.'
+        };
+        
+        let currentMode = 'cw';
+        let selectedFile = null;
+        
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+                currentMode = tab.dataset.tab;
+            });
+        });
+        
+        function setupUpload(areaId, fileId, mode) {
+            const area = document.getElementById(areaId);
+            const input = document.getElementById(fileId);
+            const btn = document.getElementById(mode + '-decode');
+            
+            area.addEventListener('click', () => input.click());
+            area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+            area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+            area.addEventListener('drop', e => {
+                e.preventDefault();
+                area.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    selectedFile = e.dataTransfer.files[0];
+                    area.innerHTML = `<div class="upload-icon">✓</div><p>${selectedFile.name}</p>`;
+                    btn.disabled = false;
+                }
+            });
+            input.addEventListener('change', () => {
+                if (input.files.length) {
+                    selectedFile = input.files[0];
+                    area.innerHTML = `<div class="upload-icon">✓</div><p>${selectedFile.name}</p>`;
+                    btn.disabled = false;
+                }
+            });
+        }
+        
+        setupUpload('cw-upload', 'cw-file', 'cw');
+        setupUpload('rtty-upload', 'rtty-file', 'rtty');
+        
+        function showStatus(id, msg, type) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + type;
+            el.textContent = msg;
+        }
+        
+        document.getElementById('cw-decode').addEventListener('click', async () => {
+            if (!selectedFile) return;
+            showStatus('cw-status', 'Decoding...', 'loading');
+            const fd = new FormData();
+            fd.append('audio', selectedFile);
+            fd.append('mode', 'cw');
+            try {
+                const res = await fetch('/api/decode', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.error) {
+                    showStatus('cw-status', data.error, 'error');
+                } else {
+                    showStatus('cw-status', 'Decoded successfully', 'success');
+                    document.getElementById('cw-result').style.display = 'block';
+                    document.getElementById('cw-output').textContent = data.decoded || 'No output';
+                }
+            } catch(e) {
+                showStatus('cw-status', 'Error: ' + e.message, 'error');
+            }
+        });
+        
+        document.getElementById('rtty-decode').addEventListener('click', async () => {
+            if (!selectedFile) return;
+            showStatus('rtty-status', 'Decoding...', 'loading');
+            const fd = new FormData();
+            fd.append('audio', selectedFile);
+            fd.append('mode', 'rtty');
+            fd.append('shift', document.getElementById('rtty-shift').value);
+            fd.append('baud', document.getElementById('rtty-baud').value);
+            try {
+                const res = await fetch('/api/decode', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.error) {
+                    showStatus('rtty-status', data.error, 'error');
+                } else {
+                    showStatus('rtty-status', 'Decoded successfully', 'success');
+                    document.getElementById('rtty-result').style.display = 'block';
+                    document.getElementById('rtty-output').textContent = data.decoded || 'No output';
+                }
+            } catch(e) {
+                showStatus('rtty-status', 'Error: ' + e.message, 'error');
+            }
+        });
+        
+        function renderFreqs() {
+            const el = document.getElementById('ft8-freqs');
+            el.innerHTML = Object.entries(FT8_FREQS).map(([band, freq]) =>
+                `<div class="morse-item"><div class="char">${band}</div><div class="code">${freq} MHz</div></div>`
+            ).join('');
+        }
+        
+        function renderMorse() {
+            const el = document.getElementById('morse-table');
+            el.innerHTML = Object.entries(MORSE).map(([char, code]) =>
+                `<div class="morse-item"><div class="char">${char}</div><div class="code">${code}</div></div>`
+            ).join('');
+        }
+        
+        renderFreqs();
+        renderMorse();
+        
+        const canvas = document.getElementById('spectrum-canvas');
+        const ctx = canvas.getContext('2d');
+        function drawSpectrum() {
+            const w = canvas.width = canvas.offsetWidth;
+            const h = canvas.height = canvas.offsetHeight;
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, w, h);
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let i = 0; i < w; i++) {
+                const y = h/2 + Math.sin(i * 0.05 + Date.now() * 0.002) * (h/3) * (0.5 + 0.5 * Math.random());
+                i === 0 ? ctx.moveTo(i, y) : ctx.lineTo(i, y);
+            }
+            ctx.stroke();
+        }
+        setInterval(drawSpectrum, 50);
+    </script>
+</body>
+</html>
