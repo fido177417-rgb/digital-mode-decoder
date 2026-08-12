@@ -13,7 +13,6 @@
 
     <application
         android:label="DMD"
-        android:icon="@drawable/ic_launcher"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
         android:usesCleartextTraffic="true">
         
