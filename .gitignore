@@ -12,3 +12,8 @@ build/
 secrets/
 *.key
 *.pem
+android_build/bin/
+*.class
+*.dex
+*.apk
+*.keystore
