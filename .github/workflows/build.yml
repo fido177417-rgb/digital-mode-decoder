@@ -40,6 +40,7 @@ jobs:
     
     - name: Package APK
       run: |
+        mkdir -p bin/gen
         $ANDROID_HOME/build-tools/34.0.0/aapt package -f -m \
           -S android_build/res \
           -J bin/gen \
